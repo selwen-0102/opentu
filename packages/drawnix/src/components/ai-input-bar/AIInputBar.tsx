@@ -254,6 +254,7 @@ import {
   hasCanvasAssociationOverwriteContent,
   isCanvasAssociationPickingSessionCurrent,
   isCanvasAssociationTriggerActive,
+  mergeTrustedCanvasAssociationRefs,
   persistCanvasAssociationEnabled,
   readCanvasAssociationEnabled,
   reconcileCanvasAssociationRefsForPromptEdit,
@@ -1151,6 +1152,9 @@ const SelectionWatcher: React.FC<{
       canvasAssociationPickingToken
     );
     const canvasAssociationPickingEpochRef = useRef(0);
+    const suppressedCanvasAssociationSelectionIdsRef = useRef<Set<string>>(
+      new Set()
+    );
     useLayoutEffect(() => {
       if (
         canvasAssociationPickingTokenRef.current !==
@@ -1200,6 +1204,11 @@ const SelectionWatcher: React.FC<{
                 selectedElements
               ) || false;
             if (consumed || selectedElements.length === 0) {
+              if (consumed) {
+                suppressedCanvasAssociationSelectionIdsRef.current = new Set(
+                  selectedElements.map((element) => element.id)
+                );
+              }
               clearSelectedElement(currentBoard);
               onSelectionChangeRef.current([]);
               onBoundImageTargetChangeRef.current?.(null);
@@ -1207,6 +1216,22 @@ const SelectionWatcher: React.FC<{
             }
           }
           return;
+        }
+        const suppressedSelectionIds =
+          suppressedCanvasAssociationSelectionIdsRef.current;
+        if (
+          selectedElements.some((element) =>
+            suppressedSelectionIds.has(element.id)
+          )
+        ) {
+          clearSelectedElement(currentBoard);
+          onSelectionChangeRef.current([]);
+          onBoundImageTargetChangeRef.current?.(null);
+          onFrameSelectedRef.current?.(null);
+          return;
+        }
+        if (selectedElements.length === 0) {
+          suppressedCanvasAssociationSelectionIdsRef.current = new Set();
         }
         const boundImageTarget = await resolveBoundImageTarget(
           currentBoard,
@@ -2003,6 +2028,10 @@ export const AIInputBar: React.FC<AIInputBarProps> = React.memo(
     const uploadedContentRef = useRef<SelectedContent[]>(uploadedContent);
     const knowledgeContextRefsRef = useRef(knowledgeContextRefs);
     const canvasAssociationRefsRef = useRef(canvasAssociationRefs);
+    // Preserve trusted picks across transient selection/draft ownership changes.
+    const canvasAssociationRegistryRef = useRef<CanvasAssociationRef[]>(
+      snapshotCanvasAssociationRefs(canvasAssociationRefs)
+    );
     const canvasAssociationTriggerRef = useRef<CanvasAssociationTrigger | null>(
       canvasAssociationTrigger
     );
@@ -2010,6 +2039,10 @@ export const AIInputBar: React.FC<AIInputBarProps> = React.memo(
     const applyCanvasAssociationRefs = useCallback(
       (references: readonly CanvasAssociationRef[]) => {
         const snapshot = snapshotCanvasAssociationRefs(references);
+        canvasAssociationRegistryRef.current = snapshotCanvasAssociationRefs([
+          ...snapshot,
+          ...canvasAssociationRegistryRef.current,
+        ]);
         canvasAssociationRefsRef.current = snapshot;
         setCanvasAssociationRefs(snapshot);
         return snapshot;
@@ -2163,6 +2196,7 @@ export const AIInputBar: React.FC<AIInputBarProps> = React.memo(
         updatePromptSuggestion(null);
         setSelectedContent([]);
         applyCanvasAssociationRefs([]);
+        canvasAssociationRegistryRef.current = [];
         updateCanvasAssociationTrigger(null);
         applyTaskbarDraft(unboundTaskbarDraftRef.current);
         return true;
@@ -3046,11 +3080,18 @@ export const AIInputBar: React.FC<AIInputBarProps> = React.memo(
           );
           return false;
         }
+        const preservedReferences = mergeTrustedCanvasAssociationRefs(
+          promptRef.current,
+          [
+            canvasAssociationRefsRef.current,
+            canvasAssociationRegistryRef.current,
+          ]
+        );
         const reference = {
           ...rawReference,
           label: getNextCanvasAssociationLabel(
             rawReference.kind,
-            canvasAssociationRefsRef.current
+            preservedReferences
           ),
         };
 
@@ -3067,7 +3108,7 @@ export const AIInputBar: React.FC<AIInputBarProps> = React.memo(
         const shiftedReferences = reconcileCanvasAssociationRefsForPromptEdit(
           promptRef.current,
           insertion.prompt,
-          canvasAssociationRefsRef.current,
+          preservedReferences,
           { start: trigger.start, end: trigger.end }
         );
         const appended = appendCanvasAssociationRef(
@@ -4574,7 +4615,10 @@ export const AIInputBar: React.FC<AIInputBarProps> = React.memo(
             | null) ?? null;
         const submittedCanvasAssociations = override
           ? []
-          : snapshotCanvasAssociationRefs(canvasAssociationRefsRef.current);
+          : mergeTrustedCanvasAssociationRefs(effectivePrompt, [
+              canvasAssociationRefsRef.current,
+              canvasAssociationRegistryRef.current,
+            ]);
         let resolvedCanvasAssociations = submittedCanvasAssociations;
         const finalizeSubmittedBoundDraft = (clearSubmittedInput: boolean) => {
           if (!submittedDraftElementId || !submittedTaskbarDraft) return false;

@@ -182,6 +182,14 @@ The system SHALL immediately connect referenced source elements to a newly publi
 - **THEN** the relationship line SHALL be removed with the missing task endpoint
 - **AND** the referenced source element SHALL remain unchanged
 
+#### Scenario: Picking replays a normal canvas selection
+
+- **GIVEN** the user is building one prompt with multiple canvas references
+- **WHEN** a picked element is also reported by the normal selection pipeline after the mention was inserted
+- **THEN** the taskbar SHALL keep the original draft ownership
+- **AND** every trusted visible reference SHALL remain in the submission snapshot
+- **AND** a failed task SHALL still retain one relationship line per referenced source
+
 #### Scenario: Move an associated endpoint
 
 - **GIVEN** a relationship line connects two existing canvas elements

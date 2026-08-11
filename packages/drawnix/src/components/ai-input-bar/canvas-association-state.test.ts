@@ -15,6 +15,7 @@ import {
   isCanvasAssociationInputTypeTrusted,
   isCanvasAssociationPickingSessionCurrent,
   isCanvasAssociationTriggerActive,
+  mergeTrustedCanvasAssociationRefs,
   normalizeCanvasAssociationLabel,
   persistCanvasAssociationEnabled,
   readCanvasAssociationEnabled,
@@ -34,6 +35,52 @@ import {
   shouldStartCanvasAssociationPicking,
   type CanvasAssociationRef,
 } from './canvas-association-state';
+
+describe('trusted canvas association registry recovery', () => {
+  it('restores every still-visible picked source after transient state loss', () => {
+    const prompt = '首帧@图片1，尾帧@图片2，字幕@卡片1';
+    const image1 = createReference('image-a', {
+      label: '图片1',
+      mentionStart: 2,
+      mentionEnd: 6,
+    });
+    const image2 = createReference('image-b', {
+      label: '图片2',
+      mentionStart: 9,
+      mentionEnd: 13,
+    });
+    const card1 = createReference('card-a', {
+      kind: 'card',
+      label: '卡片1',
+      mentionStart: 16,
+      mentionEnd: 20,
+    });
+
+    const recovered = mergeTrustedCanvasAssociationRefs(prompt, [
+      [card1],
+      [image1, image2, card1],
+    ]);
+
+    expect(recovered.map((reference) => reference.elementId)).toEqual([
+      'card-a',
+      'image-a',
+      'image-b',
+    ]);
+    expect(getNextCanvasAssociationLabel('image', recovered)).toBe('图片3');
+  });
+
+  it('does not revive a registry entry whose mention was deleted', () => {
+    const reference = createReference('image-a', {
+      label: '图片1',
+      mentionStart: 2,
+      mentionEnd: 6,
+    });
+
+    expect(
+      mergeTrustedCanvasAssociationRefs('首帧已删除', [[], [reference]])
+    ).toEqual([]);
+  });
+});
 
 function createStorage(initialValue?: string) {
   const values = new Map<string, string>();

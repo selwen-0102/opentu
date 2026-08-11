@@ -1028,3 +1028,16 @@ export function snapshotCanvasAssociationRefs(
 
   return snapshot;
 }
+
+/**
+ * Recover refs that still own a trusted inline mention. The first occurrence
+ * wins so callers can put their freshest state before a fallback registry.
+ */
+export function mergeTrustedCanvasAssociationRefs(
+  prompt: string,
+  referenceGroups: readonly (readonly CanvasAssociationRef[])[]
+): CanvasAssociationRef[] {
+  return snapshotCanvasAssociationRefs(referenceGroups.flat()).filter(
+    (reference) => hasTrustedMentionRange(prompt, reference)
+  );
+}

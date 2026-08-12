@@ -670,15 +670,6 @@ export function validateCanvasAssociationCapability({
     const isHappyHorseEdit = modelId === 'happyhorse-1.0-video-edit';
     if (visualCount > 0 && videoImageInput && videoImageInput.maxCount === 0) {
       errors.push('当前视频模型不支持图片联想引用');
-    } else if (
-      visualCount > 0 &&
-      videoImageInput &&
-      videoImageInput.maxCount > 0 &&
-      visualCount > videoImageInput.maxCount
-    ) {
-      errors.push(
-        `当前视频模型最多支持 ${videoImageInput.maxCount} 个图片联想引用`
-      );
     }
     if (videoCount > 0 && !isSeedance2 && !isHappyHorseEdit) {
       errors.push('当前视频模型不支持视频联想引用');
@@ -735,13 +726,6 @@ export function validateCanvasAssociationCapability({
       const textImageCapability = textImageInput;
       if (!textImageCapability || !textImageCapability.supported) {
         errors.push('当前文本流程不支持图片联想引用');
-      } else if (
-        textImageCapability.maxCount > 0 &&
-        visualCount > textImageCapability.maxCount
-      ) {
-        errors.push(
-          `当前文本流程最多支持 ${textImageCapability.maxCount} 个图片联想引用`
-        );
       }
     }
     if (videoCount > 0) errors.push('当前文本流程不支持视频联想引用');

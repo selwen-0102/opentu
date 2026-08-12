@@ -236,6 +236,14 @@ The system SHALL keep canvas association metadata and generated media payloads l
 - **AND** it SHALL reduce each raster output to the fixed pixel and edge budgets before it enters compression, caching or request payloads
 - **AND** it SHALL NOT truncate source elements, crop the logical bounds or mutate the canvas source
 
+#### Scenario: Reference more visual sources than the selected model advertises
+
+- **GIVEN** the prompt contains supported image, card, frame or graphics associations
+- **WHEN** their resolved visual count exceeds the selected model's upload-control recommendation
+- **THEN** the association preflight SHALL NOT reject or truncate those visual sources by count
+- **AND** every source SHALL remain in the submitted association snapshot and relationship lines
+- **AND** the provider response SHALL be surfaced if the provider ultimately rejects the request
+
 #### Scenario: Reach the deferred-link limit
 
 - **GIVEN** task acknowledgements arrive while their source boards are inactive

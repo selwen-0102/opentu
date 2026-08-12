@@ -853,7 +853,7 @@ describe('canvas association resolver', () => {
     ).toEqual([]);
   });
 
-  it('requires explicit text image input support and enforces its limit', () => {
+  it('requires explicit text image input support without limiting visual association count', () => {
     const visualContent = [
       {
         type: 'image' as const,
@@ -897,10 +897,10 @@ describe('canvas association resolver', () => {
         content: visualContent,
         textImageInput: { supported: true, maxCount: 1 },
       })
-    ).toEqual(['当前文本流程最多支持 1 个图片联想引用']);
+    ).toEqual([]);
   });
 
-  it('enforces video image input limits', () => {
+  it('only rejects video visual associations when image input is unsupported', () => {
     const visualContent = [
       {
         type: 'image' as const,
@@ -929,7 +929,7 @@ describe('canvas association resolver', () => {
         content: visualContent,
         videoImageInput: { maxCount: 1 },
       })
-    ).toEqual(['当前视频模型最多支持 1 个图片联想引用']);
+    ).toEqual([]);
     expect(
       validateCanvasAssociationCapability({
         generationType: 'video',

@@ -196,6 +196,13 @@ The system SHALL immediately connect referenced source elements to a newly publi
 - **WHEN** either endpoint moves or resizes
 - **THEN** the line SHALL update to the nearest suitable edge points without changing either business element
 
+#### Scenario: Render multiple association lines into one target
+
+- **GIVEN** multiple referenced sources connect to the same task or result
+- **WHEN** the relationship lines are rendered
+- **THEN** each relationship SHALL use a smooth markerless curve between facing element edges
+- **AND** persisted managed straight lines SHALL migrate to the same curve style without adding undo history
+
 #### Scenario: Delete an associated endpoint
 
 - **GIVEN** a relationship line connects two canvas elements

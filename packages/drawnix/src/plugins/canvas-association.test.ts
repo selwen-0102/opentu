@@ -8,6 +8,7 @@ import {
   type PlaitElement,
 } from '@plait/core';
 import { describe, expect, it } from 'vitest';
+import { ArrowLineShape } from '@plait/draw';
 import {
   canInsertCanvasAssociationsOnBoard,
   createCanvasAssociationLines,
@@ -238,7 +239,7 @@ describe('canvas association', () => {
     expect(board.history.undos).toHaveLength(0);
   });
 
-  it('migrates persisted association lines to the managed black style without undo history', () => {
+  it('migrates persisted association lines to the managed black curve style without undo history', () => {
     const persistedBoard = createBoard([
       createElement('source-1', [
         [0, 0],
@@ -256,7 +257,12 @@ describe('canvas association', () => {
     });
     persistedBoard.children = persistedBoard.children.map((element) =>
       element.id === persistedLine.id
-        ? { ...element, strokeColor: '#8b8b8b', strokeWidth: 1 }
+        ? {
+            ...element,
+            shape: ArrowLineShape.straight,
+            strokeColor: '#8b8b8b',
+            strokeWidth: 1,
+          }
         : element
     );
 
@@ -267,6 +273,7 @@ describe('canvas association', () => {
 
     expect(line?.strokeColor).toBe('#000000');
     expect(line?.strokeWidth).toBe(2);
+    expect(line?.shape).toBe(ArrowLineShape.curve);
     expect(board.history.undos).toHaveLength(0);
   });
 
@@ -330,6 +337,18 @@ describe('canvas association', () => {
     ]);
   });
 
+  it('keeps a rightward flow on facing horizontal edges despite a large vertical offset', () => {
+    expect(
+      getCanvasAssociationEndpointPoints(
+        { x: 0, y: 0, width: 100, height: 100 },
+        { x: 500, y: 500, width: 120, height: 80 }
+      )
+    ).toEqual([
+      [100, 50],
+      [500, 540],
+    ]);
+  });
+
   it('creates persistent unbound lines for custom canvas nodes', () => {
     const board = createBoard([
       createElement(
@@ -363,6 +382,7 @@ describe('canvas association', () => {
     expect(line.locked).toBe(true);
     expect(line.strokeColor).toBe('#000000');
     expect(line.strokeWidth).toBe(2);
+    expect(line.shape).toBe(ArrowLineShape.curve);
     expect(line.source.boundId).toBeUndefined();
     expect(line.target.boundId).toBeUndefined();
     expect(line.canvasAssociation).toMatchObject({

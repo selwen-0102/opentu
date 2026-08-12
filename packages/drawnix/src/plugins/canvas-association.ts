@@ -22,6 +22,7 @@ export const CANVAS_ASSOCIATION_VERSION = 1 as const;
 
 const ASSOCIATION_STROKE_COLOR = '#000000';
 const ASSOCIATION_STROKE_WIDTH = 2;
+const ASSOCIATION_LINE_SHAPE = ArrowLineShape.curve;
 const SYSTEM_ELEMENT_TYPES = new Set(['generation-anchor', 'workzone']);
 const MAX_DEFERRED_ASSOCIATION_LINKS = 256;
 
@@ -213,18 +214,19 @@ export function getCanvasAssociationEndpointPoints(
     resultRectangle.x + resultRectangle.width / 2,
     resultRectangle.y + resultRectangle.height / 2,
   ];
-  const deltaX = resultCenter[0] - sourceCenter[0];
   const deltaY = resultCenter[1] - sourceCenter[1];
+  const resultIsToRight =
+    sourceRectangle.x + sourceRectangle.width <= resultRectangle.x;
+  const resultIsToLeft =
+    resultRectangle.x + resultRectangle.width <= sourceRectangle.x;
 
-  if (Math.abs(deltaX) >= Math.abs(deltaY)) {
-    const sourceX =
-      deltaX >= 0
-        ? sourceRectangle.x + sourceRectangle.width
-        : sourceRectangle.x;
-    const resultX =
-      deltaX >= 0
-        ? resultRectangle.x
-        : resultRectangle.x + resultRectangle.width;
+  if (resultIsToRight || resultIsToLeft) {
+    const sourceX = resultIsToRight
+      ? sourceRectangle.x + sourceRectangle.width
+      : sourceRectangle.x;
+    const resultX = resultIsToRight
+      ? resultRectangle.x
+      : resultRectangle.x + resultRectangle.width;
     return [
       [sourceX, sourceCenter[1]],
       [resultX, resultCenter[1]],
@@ -599,7 +601,7 @@ export function createCanvasAssociationLines(
     if (!points) continue;
 
     const line = createArrowLineElement(
-      ArrowLineShape.straight,
+      ASSOCIATION_LINE_SHAPE,
       points,
       { marker: ArrowLineMarkerType.none },
       { marker: ArrowLineMarkerType.none },
@@ -739,6 +741,7 @@ export function retargetCanvasAssociationLines(
       board,
       {
         points,
+        shape: ASSOCIATION_LINE_SHAPE,
         canvasAssociation: buildAssociationMetadata(
           retargetable.canvasAssociation,
           {
@@ -780,6 +783,7 @@ export function reconcileCanvasAssociationLines(
     points: [Point, Point];
     restoreManagedState: boolean;
     restoreManagedStyle: boolean;
+    restoreManagedShape: boolean;
   }> = [];
 
   associationLineEntries.forEach(({ element, index }) => {
@@ -807,16 +811,19 @@ export function reconcileCanvasAssociationLines(
     const restoreManagedStyle =
       element.strokeColor !== ASSOCIATION_STROKE_COLOR ||
       element.strokeWidth !== ASSOCIATION_STROKE_WIDTH;
+    const restoreManagedShape = element.shape !== ASSOCIATION_LINE_SHAPE;
     if (
       !arePointsEqual(element.points, points) ||
       restoreManagedState ||
-      restoreManagedStyle
+      restoreManagedStyle ||
+      restoreManagedShape
     ) {
       updates.push({
         index,
         points,
         restoreManagedState,
         restoreManagedStyle,
+        restoreManagedShape,
       });
     }
   });
@@ -833,6 +840,9 @@ export function reconcileCanvasAssociationLines(
     if (update.restoreManagedStyle) {
       patch.strokeColor = ASSOCIATION_STROKE_COLOR;
       patch.strokeWidth = ASSOCIATION_STROKE_WIDTH;
+    }
+    if (update.restoreManagedShape) {
+      patch.shape = ASSOCIATION_LINE_SHAPE;
     }
     Transforms.setNode(board, patch, [update.index]);
   }
@@ -868,6 +878,7 @@ function reconcileAffectedCanvasAssociationLines(
     points: [Point, Point];
     restoreManagedState: boolean;
     restoreManagedStyle: boolean;
+    restoreManagedShape: boolean;
   }> = [];
 
   for (const lineId of affectedLineIds) {
@@ -907,16 +918,19 @@ function reconcileAffectedCanvasAssociationLines(
     const restoreManagedStyle =
       line.strokeColor !== ASSOCIATION_STROKE_COLOR ||
       line.strokeWidth !== ASSOCIATION_STROKE_WIDTH;
+    const restoreManagedShape = line.shape !== ASSOCIATION_LINE_SHAPE;
     if (
       !arePointsEqual(line.points, points) ||
       restoreManagedState ||
-      restoreManagedStyle
+      restoreManagedStyle ||
+      restoreManagedShape
     ) {
       updates.push({
         index: lineIndex,
         points,
         restoreManagedState,
         restoreManagedStyle,
+        restoreManagedShape,
       });
     }
   }
@@ -933,6 +947,9 @@ function reconcileAffectedCanvasAssociationLines(
     if (update.restoreManagedStyle) {
       patch.strokeColor = ASSOCIATION_STROKE_COLOR;
       patch.strokeWidth = ASSOCIATION_STROKE_WIDTH;
+    }
+    if (update.restoreManagedShape) {
+      patch.shape = ASSOCIATION_LINE_SHAPE;
     }
     const lineId = board.children[update.index]?.id;
     if (lineId) managedLineOperationIds.add(lineId);
